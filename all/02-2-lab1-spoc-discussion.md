@@ -21,6 +21,22 @@ NOTICE
 - [x]  
 
 >  
+   答：
+		中断控制器8259A初始化：
+			通过设置四个中断命令字ICW寄存器来完成初始化
+			kern/dirver/picirq.c : pic_init()
+		中断描述符表IDT初始化：
+			首先建立256个中断处理例程的入口地址
+			即kern/trap/vectors.S
+			然后建立对应关系
+			kern/trap/trap.c : idt_init()
+					==> struct gatedesc idt[256]
+			最后通过指令lidt，把中断描述符表到起始地址装入IDTR寄存器中
+		时钟中断的初始化：
+			在上述的基础上，在kern/driver/clock.c : clock_init() 中完成了对时钟的初始化
+			设置时钟每秒中断100次
+			调用pic_enable(IRQ_TIMER)使能时钟中断
+		
 
 lab1中完成了对哪些外设的访问？ (w2l2)
  ```
@@ -33,6 +49,11 @@ lab1中完成了对哪些外设的访问？ (w2l2)
 - [x]  
 
 >  
+   答：
+		时钟（也算外设？）
+   		串口，CGA，键盘
+   		（没有找到并口？）
+
 
 lab1中的cprintf函数最终通过哪些外设完成了对字符串的输出？ (w2l2)
  ```
@@ -45,6 +66,8 @@ lab1中的cprintf函数最终通过哪些外设完成了对字符串的输出？
 - [x]  
 
 >  
+   答：
+		串口、并口、CGA
 
 ---
 
@@ -55,23 +78,50 @@ lab1中的cprintf函数最终通过哪些外设完成了对字符串的输出？
 lab1中printfmt函数用到了可变参，请参考写一个小的linux应用程序，完成实现定义和调用一个可变参数的函数。(spoc)
 - [x]  
 
+  答：
+		#include <cstdio>
+		#include <cstdlib>
+		#include <stdarg.h>
+
+		void print(int num, ...) {
+			va_list argptr;          //va_list实际用char*实现
+		    	va_start(argptr, num);   //argptr ＝ &num
+		    	for (; num; num-- )
+		    	printf("%d\n",va_arg(argptr, int)); //argptr = argptr + sizeof(int)
+		    	va_end(argptr);
+		    	return;
+			}
+		
+		int main() {
+			print(2,1,3);
+			return 0;
+		}
 
 
 如果让你来一个阶段一个阶段地从零开始完整实现lab1（不是现在的填空考方式），你的实现步骤是什么？（比如先实现一个可显示字符串的bootloader（描述一下要实现的关键步骤和需要注意的事项），再实现一个可加载ELF格式文件的bootloader（再描述一下进一步要实现的关键步骤和需要注意的事项）...） (spoc)
 - [x]  
 
 > 
+  答：
+		1.先实现一个可显示字符串的bootloader，这一步的关键是实现对时钟、串口和CGA的正常访问，以及从实模式切换到保护模式			，从而使得段机制可以正常工作。需要注意的事项就是模式的切换必须正确完成，否则操作系统的后续执行过程就无法完成。
+		2.再实现一个可加载ELF格式文件的bootloader，这一步的关键是实现对串口、并口的正常访问，从而可以读取硬盘扇区，把ucore代码从硬盘扇区读到内存的特定地址，最后把控制权交给ucore操作系统进一步执行。需要注意的事项是要确保能够找到ELF格式文件所对应的扇区位置以及文件的大小，从而将其完整地加载到内存的特定位置。
 
 
 如何能获取一个系统调用的调用次数信息？如何可以获取所有系统调用的调用次数信息？请简要说明可能的思路。(spoc)
 - [x]  
 
 > 
+  答：
+		1.使用相应的工具（例如linux下的strace）跟踪系统调用信息。
+		2.系统调用通过访问中断向量表来确定具体的系统调用类型，所以可以通过修改操作系统代码使得程序在进入中断向量表之前			访问一段特定的指令，通过这一段指令将要被访问的系统调用信息压入一个特定的栈中。访问该栈就能够得到所有系统调用的次数和信息。
+
 
 如何修改lab1, 实现一个可显示字符串"THU LAB1"且依然能够正确加载ucore OS的bootloader？如果不能完成实现，请说明理由。
 - [x]  
 
 > 
+  答：
+		bootloader只有512字节，不足以实现这样的功能
 
 对于ucore_lab中的labcodes/lab1，我们知道如果在qemu中执行，可能会出现各种稀奇古怪的问题，比如reboot，死机，黑屏等等。请通过qemu的分析功能来动态分析并回答lab1是如何执行并最终为什么会出现这种情况？
 - [x]  
@@ -93,6 +143,8 @@ lab1中printfmt函数用到了可变参，请参考写一个小的linux应用程
 - [x]  
 
 > 
+  答：
+		确定除0中断号，根据中断号和中断向量表确定处理除0中断的处理程序的位置，在其中加入可以显示字符串的指令即可。
 
 
 在lab1/bin目录下，通过`objcopy -O binary kernel kernel.bin`可以把elf格式的ucore kernel转变成体积更小巧的binary格式的ucore kernel。为此，需要如何修改lab1的bootloader, 能够实现正确加载binary格式的ucore OS？ (hard)
@@ -121,19 +173,34 @@ GRUB是一个通用的bootloader，被用于加载多种操作系统。如果放
 
 - [x]  
 
-> 
+>
+	答：
+		由bootloader读入ucore内核到后续代码 
 
 跳转到ucore内核的代码？
 
 - [x]  
 
 > 
+  答：
+ 		bootloader在将ucore从硬盘中读入内存后，将CS EIP的值指向操作系统内核起始点，将控制权交到ucore OS
 
 全局描述符表的初始化代码？
 
 - [x]  
 
 > 
+  答：
+		lgdt gdtdesc			// 将GDT的起始地址$gdt和界限（GDT大小-1 = 3*8-1 = 23 = 0x17）装入GDTR寄存器
+    	movl %cr0, %eax
+    	orl $CR0_PE_ON, %eax
+    	movl %eax, %cr0
+
+		GDT中的三个段描述符：
+			NULL段描述符
+			代码段描述符0x8
+			数据段描述符0x10
+		起始段地址均为0，段大小均为4GB
 
 GDT内容的设置格式？初始映射的基址和长度？特权级的设置位置？
 
