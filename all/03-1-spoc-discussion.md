@@ -23,6 +23,7 @@ NOTICE
 - [x]  
 
 >  
+'''
    答：
 		最优匹配
 			优点：
@@ -51,10 +52,16 @@ NOTICE
 				分配大块空间时较慢
 		Buddy System:
 			优点：
+				搜索合并分区速度快
+				外部碎片少
 			缺点：
-		一种更有效的连续内存分配算法：
-
-
+				可能有很多内部碎片
+		一种可能更有效的连续内存分配算法：
+			综合以上三种方法，对不同大小的块分配需求，使用不同的分配算法
+			对于中等大小的块分配较多时，使用最差匹配
+			对于小尺寸的块分配较多时，使用最优匹配
+			对于大尺寸的块分配较多时，使用最先匹配
+'''
 
 
 ## 小组思考题
@@ -63,6 +70,7 @@ NOTICE
 
 --- 
 	答：
+'''
 		实现Buddy System
 		程序地址  ./03-1-spoc-discussion/BuddySys.py
 		设计关键思路：
@@ -72,6 +80,117 @@ NOTICE
 			3、前缀标记串初始为'#';
 				当一块空间分裂时，其中一块标记串后面补'0'，另一块的标记串后面补'1';
 				仅当两个空闲空间的标记串的除最后一位外均相同时可以合并;
+		测试：
+			与视频演示中使用相同数据，结果正确
+'''
+'''
+# Buddy System
+
+mem_list = []
+SIZE = 1024
+
+
+def init():
+    mem_list.append([-1, SIZE, '#'])
+
+
+def buddy_alloc(tag, size):
+    print 'Buddy Alloc : (' + str(tag) + ' , ' + str(size) + ')'
+    block = None
+    for item in mem_list:
+        if item[0] == -1 and item[1] >= size:
+            if not block or item[1] < block[1]:
+                block = item
+    if not block:
+        print '    No space available'
+        print
+    else:
+        while block[1] >= size * 2:
+            mem_list.insert(mem_list.index(block) + 1,
+                            [-1, block[1] / 2, block[2] + '1'])
+            block[1] = block[1] / 2
+            block[2] = block[2] + '0'
+        block[0] = tag
+        print '    ' + str(mem_list)
+        print
+
+
+def merge(block):
+    index = mem_list.index(block)
+    if index > 0 and mem_list[index - 1][2][:-1] == block[2][:-1] \
+       and mem_list[index - 1][0] == -1:
+        mem_list.remove(mem_list[index - 1])
+        block[1] = block[1] * 2
+        block[2] = block[2][:-1]
+        merge(block)
+    elif index + 1 < len(mem_list) and mem_list[index + 1][2][:-1] == block[2][:-1] \
+       and mem_list[index + 1][0] == -1:
+        mem_list.remove(mem_list[index + 1])
+        block[1] = block[1] * 2
+        block[2] = block[2][:-1]
+        merge(block)
+
+    
+def buddy_release(tag):
+    print 'Buddy Release : ' + str(tag)
+    for block in mem_list:
+        if block[0] == tag:
+            block[0] = -1
+            merge(block)
+            print '    ' + str(mem_list)
+            print
+            return
+
+
+def test():
+    init()
+    buddy_alloc(1, 100)
+    buddy_alloc(2, 240)
+    buddy_alloc(3, 64)
+    buddy_alloc(4, 256)
+    buddy_release(2)
+    buddy_release(1)
+    buddy_alloc(5, 75)
+    buddy_release(3)
+    buddy_release(5)
+    buddy_release(4)
+
+
+if __name__ == '__main__':
+    test()
+'''
+'''
+Output :
+Buddy Alloc : (1 , 100)
+    [[1, 128, '#000'], [-1, 128, '#001'], [-1, 256, '#01'], [-1, 512, '#1']]
+
+Buddy Alloc : (2 , 240)
+    [[1, 128, '#000'], [-1, 128, '#001'], [2, 256, '#01'], [-1, 512, '#1']]
+
+Buddy Alloc : (3 , 64)
+    [[1, 128, '#000'], [3, 64, '#0010'], [-1, 64, '#0011'], [2, 256, '#01'], [-1, 512, '#1']]
+
+Buddy Alloc : (4 , 256)
+    [[1, 128, '#000'], [3, 64, '#0010'], [-1, 64, '#0011'], [2, 256, '#01'], [4, 256, '#10'], [-1, 256, '#11']]
+
+Buddy Release : 2
+    [[1, 128, '#000'], [3, 64, '#0010'], [-1, 64, '#0011'], [-1, 256, '#01'], [4, 256, '#10'], [-1, 256, '#11']]
+
+Buddy Release : 1
+    [[-1, 128, '#000'], [3, 64, '#0010'], [-1, 64, '#0011'], [-1, 256, '#01'], [4, 256, '#10'], [-1, 256, '#11']]
+
+Buddy Alloc : (5 , 75)
+    [[5, 128, '#000'], [3, 64, '#0010'], [-1, 64, '#0011'], [-1, 256, '#01'], [4, 256, '#10'], [-1, 256, '#11']]
+
+Buddy Release : 3
+    [[5, 128, '#000'], [-1, 128, '#001'], [-1, 256, '#01'], [4, 256, '#10'], [-1, 256, '#11']]
+
+Buddy Release : 5
+    [[-1, 512, '#0'], [4, 256, '#10'], [-1, 256, '#11']]
+
+Buddy Release : 4
+    [[-1, 1024, '#']]
+'''
 
 ## 扩展思考题
 
