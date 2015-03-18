@@ -23,6 +23,15 @@ NOTICE
 - [x]  
 
 >  
+```
+	答：
+		64位CPU架构可以支持2^64字节的逻辑地址寻址
+		x86_64 使用四级页表
+		整个地址空间（逻辑和物理均）分成固定大小的页结构
+		页大小为固定的4KB，64位的逻辑地址分为两个部分，较低的13位为页内偏移，剩余的51位是页索引，用来检索页表，得到物理页号
+		对于多级页表的索引结构，所有的索引位分为多级，前一级的页表内容为下一级页表的起始地址，最后一级页表存储真实到物理页号
+		某一级的页表尺寸是表示这个页表的位宽的2次幂大小
+
 
 ## 小组思考题
 ---
@@ -32,6 +41,12 @@ NOTICE
 - [x]  
 
 > 500=0.9\*150+0.1\*x
+```
+	答：
+		0.9 * 150 + 0.1 * x = 500
+		得 x = 3650
+		不在内存的页面的平均访问时间是3.65ms
+```
 
 （2）(spoc) 有一台假想的计算机，页大小（page size）为32 Bytes，支持32KB的虚拟地址空间（virtual address space）,有4KB的物理内存空间（physical memory），采用二级页表，一个页目录项（page directory entry ，PDE）大小为1 Byte,一个页表项（page-table entries
 PTEs）大小为1 Byte，1个页目录表大小为32 Bytes，1个页表大小为32 Bytes。页目录基址寄存器（page directory base register，PDBR）保存了页目录表的物理地址（按页对齐）。
@@ -81,10 +96,112 @@ Virtual Address 7268:
       --> Translates to Physical Address 0xca8 --> Value: 16
 ```
 
+```
+答：
+
+程序输出：
+
+Virtual Address 0x6c74
+  --> pde index:0x1b   pde content:(valid 1  pfn 0x20)
+    --> pte index:0x3   pte content:(valid 1  pfn 0x61)
+      --> Translates to Physical Address 0xc34--> Value: 06
+Virtual Address 0x6b22
+  --> pde index:0x1a   pde content:(valid 1  pfn 0x52)
+    --> pte index:0x19   pte content:(valid 1  pfn 0x47)
+      --> Translates to Physical Address 0x8e2--> Value: 1a
+Virtual Address 0x3df
+  --> pde index:0x0   pde content:(valid 1  pfn 0x5a)
+    --> pte index:0x1e   pte content:(valid 1  pfn 0x5)
+      --> Translates to Physical Address 0xbf--> Value: 0f
+Virtual Address 0x69dc
+  --> pde index:0x1a   pde content:(valid 1  pfn 0x52)
+    --> pte index:0xe   pte content:(valid 0  pfn 0x7f)
+      --> Fault (page table entry not valid)
+Virtual Address 0x317a
+  --> pde index:0xc   pde content:(valid 1  pfn 0x18)
+    --> pte index:0xb   pte content:(valid 1  pfn 0x35)
+      --> Translates to Physical Address 0x6ba--> Value: 1e
+Virtual Address 0x4546
+  --> pde index:0x11   pde content:(valid 1  pfn 0x21)
+    --> pte index:0xa   pte content:(valid 0  pfn 0x7f)
+      --> Fault (page table entry not valid)
+Virtual Address 0x2c03
+  --> pde index:0xb   pde content:(valid 1  pfn 0x44)
+    --> pte index:0x0   pte content:(valid 1  pfn 0x57)
+      --> Translates to Physical Address 0xae3--> Value: 16
+Virtual Address 0x7fd7
+  --> pde index:0x1f   pde content:(valid 1  pfn 0x12)
+    --> pte index:0x1e   pte content:(valid 0  pfn 0x7f)
+      --> Fault (page table entry not valid)
+Virtual Address 0x390e
+  --> pde index:0xe   pde content:(valid 0  pfn 0x7f)
+    --> Fault (page directory entry not valid)
+Virtual Address 0x748b
+  --> pde index:0x1d   pde content:(valid 1  pfn 0x0)
+    --> pte index:0x4   pte content:(valid 0  pfn 0x7f)
+      --> Fault (page table entry not valid)
+```
 
 
 （3）请基于你对原理课二级页表的理解，并参考Lab2建页表的过程，设计一个应用程序（可基于python, ruby, C, C++，LISP等）可模拟实现(2)题中描述的抽象OS，可正确完成二级页表转换。
 
+```
+答：
+程序地址：
+		03-2-spoc-discussion/va2pa.py
+
+#Virtual Addr ==> Pysical Addr
+
+data = []
+addrs = ['6c74', '6b22', '03df','69dc', '317a', '4546','2c03', '7fd7', '390e', '748b']
+pdbr = int('11', 16)
+
+
+def init():
+    fin = open('data.txt', 'r')
+    content = fin.read().split('\n')
+    fin.close()
+    for each in content:
+        data.append(each.split())
+
+
+def work(addr):
+    print 'Virtual Address ' + str(hex(addr))
+    pdt_list = data[pdbr]
+    pde_content = int(pdt_list[addr / 1024], 16)
+    pde_valid = pde_content / 128
+    pde_pfn = pde_content - pde_valid * 128
+    print '  --> pde index:' + str(hex(addr / 1024)) + \
+        '   pde content:(valid ' + str(pde_valid) + '  pfn ' + hex(pde_pfn) + ')'
+    if pde_valid == 0:
+        print '    --> Fault (page directory entry not valid)'
+        return
+
+    pte_list = data[pde_pfn]
+    pte_content = int(pte_list[(addr % 1024) / 32], 16)
+    pte_valid = pte_content / 128
+    pte_pfn = pte_content - pte_valid * 128
+    print '    --> pte index:' + str(hex((addr % 1024) / 32)) + \
+        '   pte content:(valid ' + str(pte_valid) + '  pfn ' + hex(pte_pfn) + ')'
+    if pte_valid == 0:
+        print '      --> Fault (page table entry not valid)'
+        return
+    
+    pt_list = data[pte_pfn]
+    pt_content = pt_list[addr % 32]
+    pa = pte_pfn * 32 + addr % 32
+    print '      --> Translates to Physical Address ' + str(hex(pa)) + '--> Value: ' + pt_content
+    
+
+def main():
+    init()
+    for addr in addrs:
+        work(int(addr, 16))
+    
+
+if __name__ == '__main__':
+    main()
+```
 
 （4）假设你有一台支持[反置页表](http://en.wikipedia.org/wiki/Page_table#Inverted_page_table)的机器，请问你如何设计操作系统支持这种类型计算机？请给出设计方案。
 
