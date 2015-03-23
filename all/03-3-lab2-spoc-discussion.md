@@ -42,6 +42,15 @@ x86保护模式中权限管理无处不在，下面哪些时候要检查访问�
 - [x]  
 
 > 
+```
+答：
+	需要log参数， -d int,cpu_reset -D q.log
+	log中的异常输出：
+		check_exception old: 0xffffffff new 0xd // general protection fault
+		check_exception old: 0xd new 0xd 		// general protection fault
+		check_exception old: 0x8 new 0xd 		// double fault
+		Triple fault
+```
 
 （2）(spoc)假定你已经完成了lab1的实验,接下来是对lab1的中断处理的回顾：请把你的学号对37(十进制)取模，得到一个数x（x的范围是-1<x<37），然后在你的答案的基础上，修init.c中的kern_init函数，在大约36行处，即
 
