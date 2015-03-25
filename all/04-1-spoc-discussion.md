@@ -41,6 +41,8 @@ time ./goodlocality
 ### 缺页异常嵌套
 
 （1）缺页异常可用于虚拟内存管理中。如果在中断服务例程中进行缺页异常的处理时，再次出现缺页异常，这时计算机系统（软件或硬件）会如何处理？请给出你的合理设计和解释。
+答：
+	Double Fault. ==> Reboot.
 
 ### 缺页中断次数计算
 （2）如果80386机器的一条机器指令(指字长4个字节)，其功能是把一个32位字的数据装入寄存器，指令本身包含了要装入的字所在的32位地址。这个过程最多会引起几次缺页中断？
@@ -71,12 +73,27 @@ PT6..0:页表的物理基址>>5
 在[物理内存模拟数据文件](./04-1-spoc-memdiskdata.md)中，给出了4KB物理内存空间和4KBdisk空间的值，PDBR的值。
 
 请回答下列虚地址是否有合法对应的物理内存，请给出对应的pde index, pde contents, pte index, pte contents，the value of addr in phy page OR disk sector。
+
+
 ```
-Virtual Address 6653:
-Virtual Address 1c13:
-Virtual Address 6890:
-Virtual Address 0af6:
-Virtual Address 1e6f:
+Virtual Address 6653 (11001 10010 10011):
+  --> pde index:0x19  pde contents:(valid 0, pfn 0x7f)
+    --> Fault
+Virtual Address 1c13 (00111 00000 10011):
+  --> pde index:0x7  pde contents:(valid 1, pfn 0x3d)
+    --> pte index:0x0  pte contents:(valid 1, pfn 0x76)
+      --> To Physical Address 0xed3 --> Value: 12
+Virtual Address 6890 (11010 00100 10000):
+  --> pde index:0x1a  pde contents:(valid 0, pfn 0x7f)
+    --> Fault
+Virtual Address 0af6 (00010 10111 10110):
+  --> pde index:0x2  pde contents:(valid 1, pfn 0x21)
+    --> pte index:0x17  pte contents:(valid 0, pfn 0x7f)
+      --> To Physical Address 0xff6 --> Value: 03
+Virtual Address 1e6f (00111 10011 01111):
+  --> pde index:0x7  pde contents:(valid 1, pfn 0x3d)
+    --> pte index:0x13  pte contents:(valid 0, pfn 0x16)
+      --> To Disk Sector Address 0x2cf --> Value: 1c
 ```
 
 **提示:**
