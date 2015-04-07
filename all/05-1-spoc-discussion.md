@@ -1,5 +1,7 @@
 #lec10 进程／线程概念spoc练习
 
+进程换出 页机制
+
 NOTICE
 - 有"w5l1"标记的题是助教要提交到学堂在线上的。
 - 有"w5l1"和"spoc"标记的题是要求拿清华学分的同学要在实体课上完成，并按时提交到学生对应的git repo上。
@@ -142,4 +144,47 @@ Time     PID: 0     PID: 1
   9     RUN:cpu      READY 
  10     RUN:yld      READY 
  11     RUNNING       DONE 
+```
+
+
+### Code
+```
+    def move_to_ready(self, expected, pid=-1):
+        if expected == STATE_DONE:
+            assert False
+        if pid == -1:
+            pid = self.curr_proc
+        self.proc_info[pid][PROC_STATE] = STATE_READY
+        return
+
+    def move_to_running(self, expected):
+        if expected == STATE_DONE:
+            assert False
+        self.proc_info[self.curr_proc][PROC_STATE] = STATE_RUNNING
+        return
+
+    def move_to_done(self, expected):
+        if expected == STATE_DONE:
+            assert False
+        self.proc_info[self.curr_proc][PROC_STATE] = STATE_DONE
+        return
+
+    def next_proc(self, pid=-1):
+        curr_id = self.curr_proc
+        next_id = (curr_id + 1) % len(self.proc_info)
+        self.proc_info[next_id][PROC_ID] = next_id
+        self.curr_proc = next_id
+        if self.proc_info[next_id][PROC_STATE] == STATE_READY:
+            self.proc_info[next_id][PROC_STATE] = STATE_RUNNING
+        return
+
+    instruction_to_execute = ''
+    if self.proc_info[self.curr_proc][PROC_STATE] == STATE_RUNNING and \
+           len(self.proc_info[self.curr_proc][PROC_CODE]) > 0:
+        instruction_to_execute = self.proc_info[self.curr_proc][PROC_CODE][0]
+        self.proc_info[self.curr_proc][PROC_CODE] = self.proc_info[self.curr_proc][PROC_CODE][1:]
+
+    if instruction_to_execute == DO_YIELD:
+        self.move_to_ready(self.proc_info[self.curr_proc][PROC_STATE])
+        self.next_proc()
 ```
