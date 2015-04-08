@@ -123,3 +123,62 @@ Time     PID: 0     PID: 1        CPU        IOs
  12     RUN:cpu       DONE          1            
  13     RUN:yld       DONE          1            
 ```
+
+#### 例1
+```
+    def move_to_ready(self, expected, pid=-1):
+        if expected == STATE_DONE:
+            assert False
+        if pid == -1:
+            pid = self.curr_proc
+        self.proc_info[pid][PROC_STATE] = STATE_READY
+        return
+
+    def move_to_running(self, expected):
+        if expected == STATE_DONE:
+            assert False
+        self.proc_info[self.curr_proc][PROC_STATE] = STATE_RUNNING
+        return
+
+    def move_to_done(self, expected):
+        if expected == STATE_DONE:
+            assert False
+        self.proc_info[self.curr_proc][PROC_STATE] = STATE_DONE
+        return
+
+    def next_proc(self, pid=-1):
+        curr_id = self.curr_proc
+        next_id = (curr_id + 1) % len(self.proc_info)
+        while next_id != curr_id:
+            if self.proc_info[next_id][PROC_STATE] == STATE_READY:
+                break
+            next_id = (next_id + 1) % len(self.proc_info)
+        if self.proc_info[next_id][PROC_STATE] == STATE_READY:
+            self.curr_proc = next_id
+            self.proc_info[next_id][PROC_ID] = next_id
+            self.proc_info[next_id][PROC_STATE] = STATE_RUNNING
+        return
+
+            io_done = False
+            for pid in range(len(self.proc_info)):
+                if clock_tick in self.io_finish_times[pid]:
+                    io_done = True
+                    self.io_finish_times[pid].remove(clock_tick)
+                    self.proc_info[pid][PROC_STATE] = STATE_READY
+                    if not self.proc_info[self.curr_proc][PROC_STATE] == STATE_RUNNING or \
+                       len(self.proc_info[self.curr_proc][PROC_CODE]) > 0:
+                        self.next_proc()
+                       
+            instruction_to_execute = ''
+            if self.proc_info[self.curr_proc][PROC_STATE] == STATE_RUNNING and \
+                   len(self.proc_info[self.curr_proc][PROC_CODE]) > 0:
+                instruction_to_execute = self.proc_info[self.curr_proc][PROC_CODE].pop(0)
+
+            if instruction_to_execute == DO_YIELD:
+                self.move_to_ready(self.proc_info[self.curr_proc][PROC_STATE])
+                self.next_proc()
+            elif instruction_to_execute == DO_IO:
+                self.proc_info[self.curr_proc][PROC_STATE] = STATE_WAIT
+                self.io_finish_times[self.curr_proc].append(clock_tick + 5)
+                self.next_proc()
+```
