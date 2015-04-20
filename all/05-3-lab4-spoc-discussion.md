@@ -7,14 +7,24 @@
 ### 总体介绍
 
 (1) ucore的线程控制块数据结构是什么？
+	proc_struct
 
 ### 关键数据结构
 
-(2) 如何知道ucore的两个线程同在一个进程？
+(2) 如何知道ucore的两个线程同在一个进程？	
+	parent
 
 (3) context和trapframe分别在什么时候用到？
+	context 上下文切换
+	trapframe 中断
 
 (4) 用户态或内核态下的中断处理有什么区别？在trapframe中有什么体现？
+	特权切换、切换到内核栈、TSS、SS
+    /* below here only when crossing rings, such as from user to kernel */
+    uintptr_t tf_esp;
+    uint16_t tf_ss;
+    uint16_t tf_padding5;
+	
 
 ### 执行流程
 
